@@ -41,7 +41,7 @@ if not live:
     print("The video was successfully saved")
 else:
     print('Turn on webcam')
-    video = cv2.VideoCapture(1)
+    video = cv2.VideoCapture(0)
     if (video.isOpened() == False):
         print("Error reading video file")
     result = cv2.VideoWriter('data/live.mp4',

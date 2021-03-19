@@ -8,18 +8,27 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 from resnet34 import define_model_resnet34
 from densenet161 import define_model_densenet161
+from resnet152 import define_model_resnet152
+from densenet201 import define_model_densenet201
+from vgg16 import define_model_vgg16
+import PIL
 
 from PIL import Image
 
 #Set device
-device = 'cpu'
 
+torch.backends.cudnn.enabled = True
+torch.backends.cudnn.benchmark =True
+dtype = torch.cuda.FloatTensor
+dtype1 = torch.cuda.LongTensor
+
+# torch.cuda.set_device(1)
 #Hyperparameters
 in_channel = 3
 num_classes = 7
 learning_rate = 0.001
-batch_size = 2
-num_epochs = 4
+batch_size = 64
+num_epochs = 30
 load_model = False
 
 class image_Dataset(Dataset):
@@ -32,71 +41,51 @@ class image_Dataset(Dataset):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.root_dir, self.annotations.iloc[index, 0])
+        img_path = os.path.join(self.root_dir, self.annotations.iloc[index, 4])
         image = io.imread(img_path)
-        if self.annotations.iloc[index, 1] == 'HAPPINESS':
-            y_label = torch.tensor(int(0))
-        elif self.annotations.iloc[index, 1] == 'DISGUST':
-            y_label = torch.tensor(int(1))
-        elif self.annotations.iloc[index, 1] == 'ANGER':
-            y_label = torch.tensor(int(2))
-        elif self.annotations.iloc[index, 1] == 'NEUTRAL':
-            y_label = torch.tensor(int(3))
-        elif self.annotations.iloc[index, 1] == 'SURPRISE':
-            y_label = torch.tensor(int(4))
-        elif self.annotations.iloc[index, 1] == 'FEAR':
-            y_label = torch.tensor(int(5))
-        elif self.annotations.iloc[index, 1] == 'SADNESS':
-            y_label = torch.tensor(int(6))
+
+        a = self.annotations.iloc[index, 1]
+        y_label = torch.tensor(int(a)).type(dtype)
 
         if self.transform:
             image = self.transform(image)
+            image = image.repeat(3, 1, 1)
 
         return (image, y_label)
 
 #Load Dataset
 my_transforms = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.0],std=[1.0])
+    transforms.Normalize(mean=[0.507395],std=[0.2551289])
 ])
 
 
-path1 = 'data/IMFDB_final/IMFDB_final/AamairKhan/3Idiots/images1/'
-path2 = 'data/IMFDB_final/IMFDB_final/AamairKhan/3Idiots/images3/'
 
-listing = os.listdir(path1)
-for file in listing:
-    im = Image.open(path1 + file)
-    imsize=(256,256)
-    if imsize[0] != -1 and im.size != imsize:
-        if imsize[0] > im.size[0]:
-            im = im.resize(imsize, Image.BICUBIC)
-        else:
-            im = im.resize(imsize, Image.ANTIALIAS)
-    im.save(path2 + file)
+dataset = image_Dataset(csv_file = '../dataset/emotion_dataset.csv', root_dir = '../dataset/images', transform = my_transforms)
 
-dataset = image_Dataset(csv_file = 'data/IMFDB_final/IMFDB_final/AamairKhan/3Idiots/3Idiots.csv', root_dir = 'data/IMFDB_final/IMFDB_final/AamairKhan/3Idiots/images3',
-                             transform = my_transforms)
+# dataset = image_Dataset(csv_file = '../dataset/dummycsv.csv', root_dir = '../dataset/dummy', transform = my_transforms)
 
+train_set, test_set = torch.utils.data.random_split(dataset, [25000, 10887])
 
-train_set, test_set = torch.utils.data.random_split(dataset, [7, 2])
-# train_set, test_set = torch.utils.data.random_split(dataset, [5,3])
+# train_set, test_set = torch.utils.data.random_split(dataset, [4,2])
 
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True)
 
 #Initialize Network
-net = define_model_resnet34(num_classes)
+# net = define_model_resnet34(num_classes)
+# net = define_model_resnet152(num_classes)
 # net = define_model_densenet161(num_classes)
-# net.to(device=device)
-
+# net = define_model_densenet201(num_classes)
+net = define_model_vgg16(num_classes)
+net = net.type(dtype)
 
 #loss and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(),lr=learning_rate)
 
-#Saving the model after every 2 epochs
-def save_checkpoint(checkpoint,filename = "checkpoint.pth.tar"):
+#Saving the model after every epoch
+def save_checkpoint(checkpoint,filename = "vggE30.pth.tar"):
     torch.save(checkpoint,filename)
 
 #Load the saved model
@@ -105,25 +94,30 @@ def load_checkpoint(checkpoint):
     optimizer.load_state_dict(checkpoint['optimizer'])
 
 if load_model:
-    load_checkpoint(torch.load("checkpoint.pth.tar"))
+    load_checkpoint(torch.load("vggE30.pth.tar"))
 
+counter = False
+previous_loss = 0;
 #Train the network
 for i in range(num_epochs):
     epoch = i+1
     losses = []
 
-    if epoch%2==0:
+    if epoch:
         checkpoint = {'state_dict':net.state_dict(),'optimizer':optimizer.state_dict()}
         save_checkpoint(checkpoint)
 
     for batch_idx,(data,targets) in enumerate(train_loader):
         #Get data to cuda
         # data = data.to(device=device)
-        targets = targets.to(device=device)
+        # targets = targets.to(device=device)
+        data = data.type(dtype)
+        targets = targets.type(dtype1)
 
         #Forward
-        scores = net.forward(data).to(device=device)
-        loss = criterion(scores,targets)
+        scores = net.forward(data)
+        loss = criterion(scores,targets).type(dtype)
+
 
         losses.append(loss.item())
         # torch.save('batchLoss.csv',loss)
@@ -135,13 +129,23 @@ for i in range(num_epochs):
         #Backward
         optimizer.zero_grad()
         loss.backward()
+        # torch.nn.utils.clip_grad_norm(net.parameters(),max_norm=1)
 
         #Gradient Descent or adam step
         optimizer.step()
 
         print(f'Loss at batch number {batch_idx} is {loss}')
 
-    print(f'Cost at epoch {epoch} is {sum(losses) / len(losses)}')
+    current_loss = sum(losses) / len(losses)
+    if counter:
+        if (current_loss > previous_loss):
+            lr = learning_rate * 0.1
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+    print("Learning Rate ",learning_rate)
+    counter = True
+    previous_loss = current_loss;
+    print(f'Cost at epoch {epoch} is {current_loss}')
 
 
 # Check accuracy on training to see how good our model is
@@ -153,11 +157,13 @@ def check_accuracy(loader, model):
     with torch.no_grad():
         for x, y in loader:
 
-            scores = model(x).to(device=device)
+            # scores = model(x).to(device=device)
+            scores = model(x.type(dtype))
             # print(scores)
             _, predictions = scores.max(1)
             # print(predictions)
-            num_correct += (predictions == y.to(device=device)).sum()
+            # num_correct += (predictions == y.to(device=device)).sum()
+            num_correct += (predictions == y.type(dtype)).sum()
             num_samples += predictions.size(0)
 
         print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct) / float(num_samples) * 100:.2f}')
@@ -168,6 +174,7 @@ def check_accuracy(loader, model):
 print("Checking accuracy on Training Set")
 check_accuracy(train_loader, net)
 
+net.eval()
 print("Checking accuracy on Test Set")
 check_accuracy(test_loader, net)
-
+net.train()
