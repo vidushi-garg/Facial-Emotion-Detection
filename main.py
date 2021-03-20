@@ -6,8 +6,6 @@ import pandas as pd
 from skimage import io
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
-from resnet34 import define_model_resnet34
-from densenet161 import define_model_densenet161
 from resnet152 import define_model_resnet152
 from densenet201 import define_model_densenet201
 from vgg16 import define_model_vgg16
@@ -63,19 +61,14 @@ my_transforms = transforms.Compose([
 
 dataset = image_Dataset(csv_file = '../dataset/emotion_dataset.csv', root_dir = '../dataset/images', transform = my_transforms)
 
-# dataset = image_Dataset(csv_file = '../dataset/dummycsv.csv', root_dir = '../dataset/dummy', transform = my_transforms)
-
+#Dividing the dataset into two parts
 train_set, test_set = torch.utils.data.random_split(dataset, [25000, 10887])
-
-# train_set, test_set = torch.utils.data.random_split(dataset, [4,2])
 
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True)
 
 #Initialize Network
-# net = define_model_resnet34(num_classes)
 # net = define_model_resnet152(num_classes)
-# net = define_model_densenet161(num_classes)
 # net = define_model_densenet201(num_classes)
 net = define_model_vgg16(num_classes)
 net = net.type(dtype)
@@ -85,7 +78,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(),lr=learning_rate)
 
 #Saving the model after every epoch
-def save_checkpoint(checkpoint,filename = "vggE30.pth.tar"):
+def save_checkpoint(checkpoint,filename = "checkpoint.pth.tar"):
     torch.save(checkpoint,filename)
 
 #Load the saved model
@@ -94,7 +87,7 @@ def load_checkpoint(checkpoint):
     optimizer.load_state_dict(checkpoint['optimizer'])
 
 if load_model:
-    load_checkpoint(torch.load("vggE30.pth.tar"))
+    load_checkpoint(torch.load("checkpoint.pth.tar"))
 
 counter = False
 previous_loss = 0;
@@ -109,8 +102,6 @@ for i in range(num_epochs):
 
     for batch_idx,(data,targets) in enumerate(train_loader):
         #Get data to cuda
-        # data = data.to(device=device)
-        # targets = targets.to(device=device)
         data = data.type(dtype)
         targets = targets.type(dtype1)
 
@@ -120,16 +111,10 @@ for i in range(num_epochs):
 
 
         losses.append(loss.item())
-        # torch.save('batchLoss.csv',loss)
-
-        # x_np = loss.cpu().numpy()
-        # x_df = pd.DataFrame(x_np)
-        # x_df.to_csv('batchLoss.csv')
 
         #Backward
         optimizer.zero_grad()
         loss.backward()
-        # torch.nn.utils.clip_grad_norm(net.parameters(),max_norm=1)
 
         #Gradient Descent or adam step
         optimizer.step()
@@ -137,6 +122,7 @@ for i in range(num_epochs):
         print(f'Loss at batch number {batch_idx} is {loss}')
 
     current_loss = sum(losses) / len(losses)
+    #Manually updating the learning rate
     if counter:
         if (current_loss > previous_loss):
             lr = learning_rate * 0.1
@@ -157,12 +143,8 @@ def check_accuracy(loader, model):
     with torch.no_grad():
         for x, y in loader:
 
-            # scores = model(x).to(device=device)
             scores = model(x.type(dtype))
-            # print(scores)
             _, predictions = scores.max(1)
-            # print(predictions)
-            # num_correct += (predictions == y.to(device=device)).sum()
             num_correct += (predictions == y.type(dtype)).sum()
             num_samples += predictions.size(0)
 
