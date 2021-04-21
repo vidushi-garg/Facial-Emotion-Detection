@@ -9,7 +9,9 @@ import torchvision.transforms as transforms
 from resnet152 import define_model_resnet152
 from densenet201 import define_model_densenet201
 from vgg16 import define_model_vgg16
+import numpy as np
 import PIL
+from PIL import Image
 
 from PIL import Image
 
@@ -29,18 +31,54 @@ batch_size = 64
 num_epochs = 30
 load_model = False
 
+# Width and Height of the image as given in the dataset
+(width, height) = 48,48
+
+# Convert each row of 'pixels' column into numpy array of images
+def readPixels(pixelRow):
+    # Split the string of pixels separated by spaces
+    pixelRow = [int(pixel) for pixel in pixelRow.split(' ')]
+    # Convert this list of pixel values into numpy array
+    return np.asarray(pixelRow).reshape(width, height)
+
+# class image_Dataset(Dataset):
+#     def __init__(self, csv_file, root_dir, transform=None):
+#         self.annotations = pd.read_csv(csv_file)
+#         self.root_dir = root_dir
+#         self.transform = transform
+#
+#     def __len__(self):
+#         return len(self.annotations)
+#
+#     def __getitem__(self, index):
+#         img_path = os.path.join(self.root_dir, self.annotations.iloc[index, 4])
+#         image = io.imread(img_path)
+#
+#         a = self.annotations.iloc[index, 1]
+#         y_label = torch.tensor(int(a)).type(dtype)
+#
+#         if self.transform:
+#             image = self.transform(image)
+#             image = image.repeat(3, 1, 1)
+#
+#         return (image, y_label)
+
 class image_Dataset(Dataset):
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, csv_file, transform=None):
         self.annotations = pd.read_csv(csv_file)
-        self.root_dir = root_dir
+        # self.root_dir = root_dir
         self.transform = transform
 
     def __len__(self):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.root_dir, self.annotations.iloc[index, 4])
-        image = io.imread(img_path)
+
+        pixels = self.annotations.iloc[index, 2]
+        # Convert each row of 'pixels' column into numpy array of images
+        image = readPixels(pixels)
+        image = Image.fromarray(np.uint8(image))
+
 
         a = self.annotations.iloc[index, 1]
         y_label = torch.tensor(int(a)).type(dtype)
@@ -54,12 +92,15 @@ class image_Dataset(Dataset):
 #Load Dataset
 my_transforms = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.507395],std=[0.2551289])
+    # transforms.Normalize(mean=[0.507395],std=[0.2551289])
+    transforms.Normalize(mean=[0.55199619],std=[0.2486985])
 ])
 
 
 
-dataset = image_Dataset(csv_file = '../dataset/emotion_dataset.csv', root_dir = '../dataset/images', transform = my_transforms)
+# dataset = image_Dataset(csv_file = '../dataset/emotion_dataset.csv', root_dir = '../dataset/images', transform = my_transforms)
+
+dataset = image_Dataset(csv_file = '../dataset/emotion_dataset.csv', transform = my_transforms)
 
 #Dividing the dataset into two parts
 train_set, test_set = torch.utils.data.random_split(dataset, [25000, 10887])

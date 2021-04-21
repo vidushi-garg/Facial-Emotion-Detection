@@ -13,14 +13,14 @@ import PIL
 dtype = torch.cuda.FloatTensor
 # dtype1 = torch.cuda.LongTensor
 
-live= False
+live= True
 def detect_faces(image):
 
     # Create a face detector
     face_detector = dlib.get_frontal_face_detector()
 
     # Run detector and get bounding boxes of the faces on image.
-    detected_faces = face_detector(image, 1)
+    detected_faces = face_detector(image, upsample_num_times = 0)
     face_frames = [(x.left(), x.top(),
                     x.right(), x.bottom()) for x in detected_faces]
 
@@ -70,6 +70,11 @@ if not live:
     while True:
         ret, frame = video_capture.read()
         image1 = frame
+        # print(frame)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # frame = Image.fromarray(frame)
+        # frame = ImageTk.PhotoImage(frame)
+
         detected_faces = detect_faces(frame)
         for n, face_rect in enumerate(detected_faces):
             face = Image.fromarray(frame).crop(face_rect)
@@ -116,7 +121,17 @@ else:
                 face = Image.fromarray(frame).crop(face_rect)
                 image11 = cv2.rectangle(frame, (face_rect[0], face_rect[1]), (face_rect[2], face_rect[3]), (0, 255, 0),4)
                 font = cv2.FONT_HERSHEY_DUPLEX
-                cv2.putText(image11, 'HAPPY', (face_rect[0] + 6, face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
+
+                imsize = (48, 48)
+                # face1 = face.resize(48,Image.BICUBIC)
+                if imsize[0] > face.size[0]:
+                    im = face.resize(imsize, Image.BICUBIC)
+                else:
+                    im = face.resize(imsize, Image.ANTIALIAS)
+
+                text = predict_face_expression(net, im)
+
+                cv2.putText(image11, text, (face_rect[0] + 6, face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
             cv2.imshow('Video', image11)
             result.write(image11)
             if cv2.waitKey(1) & 0xFF == ord('q'):

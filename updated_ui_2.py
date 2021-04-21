@@ -5,7 +5,6 @@ import cv2
 import threading
 # from faceDetect import *
 import time
-import signal
 
 import dlib
 from PIL import Image
@@ -16,15 +15,13 @@ import torch
 from vgg16 import define_model_vgg16
 import torchvision.transforms as transforms
 
-
-
-torch.backends.cudnn.enabled = True
-torch.backends.cudnn.benchmark =True
+# torch.backends.cudnn.enabled = True
+# torch.backends.cudnn.benchmark =True
 dtype = torch.cuda.FloatTensor
 # dtype1 = torch.cuda.LongTensor
 
 # cap = cv2.VideoCapture(0)
-root = Tk()
+
 pos =1
 flag_happy = False
 flag_fear = False
@@ -33,61 +30,12 @@ flag_disgust = False
 flag_sad = False
 flag_angry = False
 mode=0
-teacher_mode_flag = False
-
-happy = IntVar()
-fear = IntVar()
-surprise = IntVar()
-disgust = IntVar()
-sad = IntVar()
-angry = IntVar()
-happy.set("0")
-fear.set("0")
-surprise.set("0")
-disgust.set("0")
-sad.set("0")
-angry.set("0")
-
-
-#Database
-import sqlite3
-
-#Create a database or connect to database
-conn = sqlite3.connect('AI_database.db')
-
-#Create cursor
-c = conn.cursor()
-
-# c.execute("""CREATE TABLE table_q1(
-#     Happy INTEGER,
-#     Fear INTEGER,
-#     Surprise INTEGER,
-#     Disgust INTEGER,
-#     SAd INTEGER,
-#     Angry INTEGER
-#     )""")
-#
-# c.execute("""CREATE TABLE table_q2(
-#     Happy INTEGER,
-#     Fear INTEGER,
-#     Surprise INTEGER,
-#     Disgust INTEGER,
-#     SAd INTEGER,
-#     Angry INTEGER
-#     )""")
-#
-# c.execute("""CREATE TABLE table_q3(
-#     Happy INTEGER,
-#     Fear INTEGER,
-#     Surprise INTEGER,
-#     Disgust INTEGER,
-#     SAd INTEGER,
-#     Angry INTEGER
-#     )""")
 
 
 
 
+
+root = Tk()
 fontStyle = ("Helvetica", 14)
 fontHead=("Helvetica", 18,'bold')
 Width = 1024
@@ -104,24 +52,12 @@ q2 = ImageTk.PhotoImage(file="../images/AI_Q2.PNG")
 q3 = ImageTk.PhotoImage(file="../images/AI_Q3.PNG")
 Question = Label(root,image=bg,height=100,width=Width)
 
-
-
-
-# mainmainFrame = Frame(root, width=Width, height=Height)
-# mainmainFrame.pack_propagate(True)
-# mainmainFrame.pack()
-
-
-
 mainFrame = Frame(root, width=Width, height=Height)
 mainFrame.pack_propagate(False)
 mainFrame.pack()
 label1 = Label(mainFrame, image=bg)
 label1.place(x=0, y=0,relwidth=1,relheight=1,anchor="nw")
 # label1.pack()
-
-popups=Frame(mainFrame, height=460, bg='lightgrey', bd=1 )
-submit=Button(mainFrame,text="Save")
 
 # my_canvas = Canvas(mainFrame,width = Width,height=Height)
 # my_canvas.pack(fill="both",expand=True)
@@ -133,16 +69,14 @@ root.title('Quizy')
 # info.pack_propagate(False)
 # info.pack()
 t = IntVar()
-t=15
-a = Label(mainFrame, text='Welcome!',bg='#143E94',  font=fontHead,fg='white')
-a.pack()
+t=20
+Label(mainFrame, text='Welcome!',bg='#143E94',  font=fontHead,fg='white').pack()
 
-h = Label(mainFrame, text='',bg='#143E94',
+h = Label(mainFrame, text='Smile in ' + str(t) + ' seconds :) to enter into student mode.',bg='#143E94',
           font=fontHead,fg='white')
 h.pack()
 
-teach= Label(mainFrame, text=' ',bg='#143E94', font=fontHead,fg='white')
-teach.pack()
+Label(mainFrame, text='Otherwise you will be logged in into teacher\'s mode',bg='#143E94', font=fontHead,fg='white').pack()
 
 camVideo = Frame(mainFrame, width=Width, height=460, bg='#0E347B',bd=1)
 camVideo.pack()
@@ -161,28 +95,20 @@ Label(quizInfo, text='Maximum Marks: 100', bg='#03081D', font=fontStyle,fg='whit
 Label(quizInfo, text='Duration: 1Hour 45 Min', bg='#03081D', font=fontStyle,fg='white').pack()
 
 def updateTime():
-    global h,t,teach
-    while t and mode !=2:
+    global h,t
+    while t:
         time.sleep(1)
         t -= 1
         if t<=5:
             h.configure(text='Smile in ' + str(t) + ' seconds :) to enter into student mode.', fg='red')
-        elif t<=10 and t>5:
-            teach.configure(text='Otherwise you will be logged in into teacher\'s mode')
+        else:
             h.configure(text='Smile in ' + str(t) + ' seconds :) to enter into student mode.')
 
 #Student mode
 def goLeft():
-    global pos,q1,q2,q3,Question,popups,submit
+    global pos,q1,q2,q3,Question,popups
     global flag_happy, flag_fear, flag_surprise, flag_disgust, flag_sad, flag_angry
-    global happy, fear, surprise, disgust, sad, angry
 
-    happy.set("0")
-    fear.set("0")
-    surprise.set("0")
-    disgust.set("0")
-    sad.set("0")
-    angry.set("0")
     if pos>1:
         pos=pos-1
         popups.destroy()
@@ -195,21 +121,17 @@ def goLeft():
         flag_disgust = False
         flag_sad = False
         flag_angry = False
-
     Question.forget()
 
     if pos==1:
-        submit.configure(text='Save')
         Question = Label(mainFrame, image=q1, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
     elif pos==2:
-        submit.configure(text='Save')
         Question = Label(mainFrame, image=q2, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
     elif pos==3:
-        submit.configure(text='Submit and Exit')
         Question = Label(mainFrame, image=q3, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
@@ -217,16 +139,9 @@ def goLeft():
 
 
 def goRight():
-    global pos,q1,q2,q3,Question,popups,submit
+    global pos,q1,q2,q3,Question,popups
     global flag_happy, flag_fear, flag_surprise, flag_disgust, flag_sad, flag_angry
-    global happy, fear, surprise, disgust, sad, angry
 
-    happy.set("0")
-    fear.set("0")
-    surprise.set("0")
-    disgust.set("0")
-    sad.set("0")
-    angry.set("0")
 
     if pos<3:
         pos=pos+1
@@ -244,17 +159,14 @@ def goRight():
     Question.forget()
 
     if pos == 1:
-        submit.configure(text='Save')
         Question = Label(mainFrame, image=q1, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
     elif pos == 2:
-        submit.configure(text='Save')
         Question = Label(mainFrame, image=q2, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
     elif pos == 3:
-        submit.configure(text='Submit and Exit')
         Question = Label(mainFrame, image=q3, height=200, width=Width)
         Question.grid_propagate(False)
         Question.grid(row=1, column=0, columnspan=10)
@@ -266,12 +178,8 @@ def goRight():
 def submitt():
     # root.wm_protocol("WM_DELETE_WINDOW", packup)
     #
-    global root,pos
-    if pos==3:
-        save()
-        root.destroy()
-    else:
-        save()
+    global root
+    root.destroy()
     # stop.set()
 
 # def packup():
@@ -295,25 +203,16 @@ def detect_faces(image):
 
     return face_frames
 
-net = define_model_vgg16(7)
-net = net.type(dtype)
-
-net.load_state_dict(torch.load("vggE100.pth.tar",map_location='cuda:0')['state_dict'])
 def predict_face_expression(net,face):
     x = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.55199619], std=[0.2486985])
+        transforms.Normalize(mean=[0.507395], std=[0.2551289])
     ])(face)
-
+    net.load_state_dict(torch.load("vggE100.pth.tar",map_location='cuda:0')['state_dict'])
     x = torch.unsqueeze(x, 0)
     scores = net(x.type(dtype))
-    # scores = torch.randn(1,6)
-    # scores=scores*3
     # scores = net(x)
-    # global t
     _, predictions = scores.max(1)
-    # if t==3:
-    #     _, predictions = 10, 3  # scores.max(1)
     text = ""
 
     if predictions == 0:
@@ -333,25 +232,23 @@ def predict_face_expression(net,face):
 
     return text
 
-count_smile =0
-count_exp=0
+
 cap = cv2.VideoCapture(0)
+net = define_model_vgg16(7)
+net = net.type(dtype)
 def videoLoop():
     global root
     global cap,net
     global image1
     global t,text
-    global flag_happy, flag_fear, flag_surprise, flag_disgust, flag_sad, flag_angry, mode, count_smile,count_exp,popups
-    global happy, fear, surprise, disgust, sad, angry, teacher_mode_flag
+    global flag_happy, flag_fear, flag_surprise, flag_disgust, flag_sad, flag_angry, mode
 
-    vidLabel = Label(root, anchor=W)
+    vidLabel = Label(root, anchor=NW)
     vidLabel.pack(expand=YES, fill=BOTH)
 
-    camVideoLabel = Label(camVideo,width=460, height=460, bg='white',anchor="w")
+    camVideoLabel = Label(camVideo,width=460, height=460, bg='white')
     camVideoLabel.pack()
     while t:
-        if teacher_mode_flag:
-            break
         ret, frame = cap.read()
         # print("Frame " +frame)
 
@@ -376,165 +273,62 @@ def videoLoop():
             # text = "Happy"
             text = predict_face_expression(net, im)
             cv2.putText(image1, text, (face_rect[0] + 6, face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
-        if text=="Happy" and t<=5:
-            count_smile+=1
-
-        count_exp=count_exp+1
-
         if mode==2:
             if text == "Happy" and (not flag_happy) :
                 flag_happy=True
-                # happy = IntVar()
-                # happy.set("0")
-                Label(popups, text="Is the question too easy?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=happy, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=happy, value=0,bg='lightgrey').pack(anchor="w")
+                happy = IntVar()
+                happy.set("0")
+                Label(popups, text="Is the question too easy?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=happy, value=1).pack()
+                Radiobutton(popups, text="No", variable=happy, value=0).pack()
             elif text == "Fear" and (not flag_fear):
                 flag_fear=True
-                # fear = IntVar()
-                # fear.set("0")
-                Label(popups, text="Is the question too hard?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=fear, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=fear, value=0,bg='lightgrey').pack(anchor="w")
+                fear = IntVar()
+                fear.set("0")
+                Label(popups, text="Is the question too hard?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=fear, value=1).pack()
+                Radiobutton(popups, text="No", variable=fear, value=0).pack()
             elif text == "Surprise" and (not flag_surprise):
                 flag_surprise=True
-                # surprise = IntVar()
-                # surprise.set("0")
-                Label(popups, text="Have you seen the question somewhere?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=surprise, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=surprise, value=0,bg='lightgrey').pack(anchor="w")
+                surprise = IntVar()
+                surprise.set("0")
+                Label(popups, text="Have you seen the question somewhere?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=surprise, value=1).pack()
+                Radiobutton(popups, text="No", variable=surprise, value=0).pack()
             elif text == "Disgust" and (not flag_disgust):
                 flag_disgust=True
-                # disgust = IntVar()
-                # disgust.set("0")
-                Label(popups, text="Are you stuck in between the solution of the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=disgust, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=disgust, value=0,bg='lightgrey').pack(anchor="w")
+                disgust = IntVar()
+                disgust.set("0")
+                Label(popups, text="Are you stuck in between the solution of the question?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=disgust, value=1).pack()
+                Radiobutton(popups, text="No", variable=disgust, value=0).pack()
             elif text == "Sad" and (not flag_sad):
                 flag_sad=True
-                # sad = IntVar()
-                # sad.set("0")
-                Label(popups, text="Are you not able to understand the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=sad, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=sad, value=0,bg='lightgrey').pack(anchor="w")
+                sad = IntVar()
+                sad.set("0")
+                Label(popups, text="Are you not able to understand the question?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=sad, value=1).pack()
+                Radiobutton(popups, text="No", variable=sad, value=0).pack()
             elif text == "Angry" and (not flag_angry):
                 flag_angry=True
-                # angry = IntVar()
-                # angry.set("0")
-                Label(popups, text="Is the question out of syllabus?",font=fontStyle, bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=angry, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=angry, value=0,bg='lightgrey').pack(anchor="w")
+                angry = IntVar()
+                angry.set("0")
+                Label(popups, text="Is the question out of syllabus?",font=fontStyle).pack()
+                Radiobutton(popups, text="Yes", variable=angry, value=1).pack()
+                Radiobutton(popups, text="No", variable=angry, value=0).pack()
         frame = cv2.cvtColor(image1, cv2.COLOR_BGR2RGB)
         frame = Image.fromarray(frame)
         frame = ImageTk.PhotoImage(frame)
         camVideoLabel.configure(image=frame)
         camVideoLabel.image = frame
-        # torch.cuda.empty_cache()
 
     root.quit()
 
-# id_q1 = 1
-# id_q2 = 1
-# id_q3 = 1
-# def save():
-#     global pos
-#     global id_q1
-#     global id_q2
-#     global id_q3
-#     global happy, fear, surprise, disgust, sad, angry
-#
-#     conn = sqlite3.connect('AI_database.db')
-#     c = conn.cursor()
-#
-#     if pos ==1:
-#         id_q1 = id_q1 + 1
-#         c.execute("INSERT INTO table_q1 VALUES (:id,:happy,:fear,:surprise,:disgust,:sad,:angry)",
-#                   {
-#                       'id':id_q1,
-#                       'happy': happy.get(),
-#                       'fear': fear.get(),
-#                       'surprise': surprise.get(),
-#                       'disgust': disgust.get(),
-#                       'sad': sad.get(),
-#                       'angry': angry.get()
-#                   })
-#     elif pos ==2:
-#         id_q2 = id_q2 + 1
-#         c.execute("INSERT INTO table_q2 VALUES (:id,:happy,:fear,:surprise,:disgust,:sad,:angry)",
-#                   {
-#                       'id': id_q2,
-#                       'happy': happy.get(),
-#                       'fear': fear.get(),
-#                       'surprise': surprise.get(),
-#                       'disgust': disgust.get(),
-#                       'sad': sad.get(),
-#                       'angry': angry.get()
-#                   })
-#     else:
-#         id_q3 = id_q3 + 1
-#         c.execute("INSERT INTO table_q3 VALUES (:id,:happy,:fear,:surprise,:disgust,:sad,:angry)",
-#                   {
-#                       'id': id_q3,
-#                       'happy': happy.get(),
-#                       'fear': fear.get(),
-#                       'surprise': surprise.get(),
-#                       'disgust': disgust.get(),
-#                       'sad': sad.get(),
-#                       'angry': angry.get()
-#                   })
-#
-#     conn.commit()
-#     conn.close()
 
 
-def save():
-    global pos
-    global happy, fear, surprise, disgust, sad, angry
-
-    conn = sqlite3.connect('AI_database.db')
-    c = conn.cursor()
-
-    if pos ==1:
-        # id_q1 = id_q1 + 1
-        c.execute("INSERT INTO table_q1 VALUES (:happy,:fear,:surprise,:disgust,:sad,:angry)",
-                  {
-                      'happy': happy.get(),
-                      'fear': fear.get(),
-                      'surprise': surprise.get(),
-                      'disgust': disgust.get(),
-                      'sad': sad.get(),
-                      'angry': angry.get()
-                  })
-    elif pos ==2:
-        # id_q2 = id_q2 + 1
-        c.execute("INSERT INTO table_q2 VALUES (:happy,:fear,:surprise,:disgust,:sad,:angry)",
-                  {
-                      # 'id': id_q2,
-                      'happy': happy.get(),
-                      'fear': fear.get(),
-                      'surprise': surprise.get(),
-                      'disgust': disgust.get(),
-                      'sad': sad.get(),
-                      'angry': angry.get()
-                  })
-    else:
-        # id_q3 = id_q3 + 1
-        c.execute("INSERT INTO table_q3 VALUES (:happy,:fear,:surprise,:disgust,:sad,:angry)",
-                  {
-                      # 'id': id_q3,
-                      'happy': happy.get(),
-                      'fear': fear.get(),
-                      'surprise': surprise.get(),
-                      'disgust': disgust.get(),
-                      'sad': sad.get(),
-                      'angry': angry.get()
-                  })
-
-    conn.commit()
-    conn.close()
 
 def studentMode():
-    global mainFrame,bg,Width,Height,root,pos,left,right,Question,q1,q2,q3,camVideo,t,popups,mode,submit
+    global mainFrame,bg,Width,Height,root,pos,left,right,Question,q1,q2,q3,camVideo,t,popups,mode
     mode=2
     t=True
     mainFrame.destroy()
@@ -543,9 +337,10 @@ def studentMode():
     mainFrame.pack()
 
 
-    # label1 = Label(mainFrame, image=bg)
-    label1 = Label(mainFrame, bg='lightgrey')
+    label1 = Label(mainFrame, image=bg)
     label1.place(x=0, y=0, relwidth=1, relheight=1, anchor="nw")
+
+
 
     # if (pos==1):
     Question = Label(mainFrame,image=q1,height=200,width=Width)
@@ -562,102 +357,19 @@ def studentMode():
     videoThread = threading.Thread(target=videoLoop, args=())
     videoThread.start()
     camVideo.grid(row=2,column=0,columnspan=6)
-    popups = Frame(mainFrame, height=460, bg='lightgrey', bd=1)
-    # popups.pack()
+    popups = Frame(mainFrame, height=460, bg='lightgrey', bd=1 )
     popups.grid_propagate(True)
     popups.grid(row=2, column=6, columnspan=4)
 
 
 
-    submit=Button(mainFrame,text="Save",command=submitt)
+    submit=Button(mainFrame,text="Submit",command=submitt)
     submit.grid(row=3,column=5)
 
 
-def query():
-    conn = sqlite3.connect('AI_database.db')
-    c = conn.cursor()
-
-    c.execute("Select * From table_q1")
-    records = c.fetchall()
-    print("Q1: "+str(records))
-
-    c.execute("Select * From table_q2")
-    records = c.fetchall()
-    print("Q2: " + str(records))
-
-    c.execute("Select * From table_q3")
-    records = c.fetchall()
-    print("Q3: " + str(records))
-
-    conn.commit()
-    conn.close()
 
 
-
-def teacher_mode():
-
-    # submit = Button(mainFrame, text="Save", command=submitt)
-    # submit.grid(row=3, column=5)
-
-    global mainFrame,root,Width,Height,count_smile,Question,popups
-    count_smile = 0
-    # mainFrame.destroy()
-    Question.destroy()
-    popups.destroy()
-    camVideo.destroy()
-    a.destroy()
-    h.destroy()
-    teach.destroy()
-    quizInfo.destroy()
-
-    # mainFrame = Frame(root, width=Width, height=Height)
-    # mainFrame.pack_propagate(False)
-    # mainFrame.pack()
-
-    aFrame = Frame(mainFrame, width=Width, height=Height)
-    aFrame.pack_propagate(True)
-    aFrame.pack()
-
-    label1 = Label(aFrame, bg='lightgrey',text="Swapnil is stupid ")
-    label1.place(x=0, y=0, relwidth=1, relheight=1, anchor="nw")
-
-    query_btn = Button(aFrame, text="Show Records", command=query)
-    query_btn.grid(row=0, column=0)
-
-
-def change_screen():
-    global count_smile,count_exp,videoThread,t, teacher_mode_flag
-    while True:
-        if(t==0):
-            # count_smile =count_exp-1
-            # print(count_smile)
-            # print(count_exp)
-
-            if (count_smile/count_exp)>1:
-                studentMode()
-                break
-            else:
-                count_smile = 0
-                teacher_mode_flag = True
-                # teacher_mode()
-                teacherThread = threading.Thread(target=teacher_mode, args=())
-                teacherThread.start()
-                break
-
-videoThread = threading.Thread(target=videoLoop, args=())
-videoThread.start()
-# time.sleep(5)
-timeThread = threading.Thread(target=updateTime, args=())
-timeThread.start()
-smileThread = threading.Thread(target=change_screen, args=())
-smileThread.start()
-
+studentMode()
 
 root.mainloop()
 cap.release()
-
-# #Commit changes
-# conn.commit()
-#
-# #Close connection
-# conn.close()

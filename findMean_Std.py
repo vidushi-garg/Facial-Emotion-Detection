@@ -6,7 +6,7 @@ import numpy as np
 # from scipy.misc import imread
 from matplotlib.pyplot import imread
 
-filepath = '../dataset/images'
+filepath = '../cleaned_dataset/'
 pathDir=os.listdir(filepath)
 
 # mean
