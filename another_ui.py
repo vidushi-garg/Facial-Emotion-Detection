@@ -304,6 +304,9 @@ def predict_face_expression(net,face):
 
 flag_popup = True
 
+global_text = ""
+global_face_rect = [0,0,0,0]
+count_frame = 0
 count_smile =0
 count_exp=0
 cap = cv2.VideoCapture(0)
@@ -313,7 +316,7 @@ def videoLoop():
     global image1
     global t,text
     global flag_happy, flag_fear, flag_surprise, flag_disgust, flag_sad, flag_angry, mode, count_smile,count_exp,popups
-    global happy, fear, surprise, disgust, sad, angry, teacher_mode_flag, flag_popup
+    global happy, fear, surprise, disgust, sad, angry, teacher_mode_flag, flag_popup, count_frame, global_face_rect,global_text
 
     vidLabel = Label(root, anchor=W)
     vidLabel.pack(expand=YES, fill=BOTH)
@@ -324,73 +327,91 @@ def videoLoop():
         if teacher_mode_flag:
             break
         ret, frame = cap.read()
+        count_frame = count_frame+1
 
         if not (ret):
             cap.release()
             cv2.destroyAllWindows()
             root.quit()
 
-        image1 = frame
-        detected_faces = detect_faces(frame)
-        for n, face_rect in enumerate(detected_faces):
-            face = Image.fromarray(frame).crop(face_rect)
-            image1 = cv2.rectangle(frame, (face_rect[0], face_rect[1]), (face_rect[2], face_rect[3]), (0, 255, 0), 4)
+        if count_frame%5==0:
+            count_frame = 0
+
+            image1 = frame
+            detected_faces = detect_faces(frame)
+            if len(detected_faces)==0:
+                global_face_rect = [0,0,0,0]
+                global_text = " "
+            for n, face_rect in enumerate(detected_faces):
+                global_face_rect = face_rect
+                face = Image.fromarray(frame).crop(face_rect)
+                image1 = cv2.rectangle(frame, (face_rect[0], face_rect[1]), (face_rect[2], face_rect[3]), (0, 255, 0), 4)
+                font = cv2.FONT_HERSHEY_DUPLEX
+
+                imsize = (48, 48)
+                if imsize[0] > face.size[0]:
+                    im = face.resize(imsize, Image.BICUBIC)
+                else:
+                    im = face.resize(imsize, Image.ANTIALIAS)
+
+                # text = "Fear"
+                text = predict_face_expression(net, im)
+                global_text = text
+                cv2.putText(image1, text, (face_rect[0] + 6, face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
+            if text=="Happy" and t<=5:
+                count_smile+=1
+
+            count_exp=count_exp+1
+
+            if mode==2:
+                if flag_popup:
+                    flag_popup = False
+                    popups.grid_propagate(True)
+                    popups.grid(row=2, column=6, columnspan=4)
+                if text == "Happy" and (not flag_happy) :
+                    flag_happy=True
+                    Label(popups, text="Is the question too easy?",font=fontStyle,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=happy, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=happy, value=0,bg='lightgrey').pack(anchor="w")
+                elif text == "Fear" and (not flag_fear):
+                    flag_fear=True
+                    Label(popups, text="Is the question too hard?",font=fontStyle,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=fear, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=fear, value=0,bg='lightgrey').pack(anchor="w")
+                elif text == "Surprise" and (not flag_surprise):
+                    flag_surprise=True
+                    Label(popups, text="Have you seen the question somewhere?",font=fontStyle,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=surprise, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=surprise, value=0,bg='lightgrey').pack(anchor="w")
+                elif text == "Disgust" and (not flag_disgust):
+                    flag_disgust=True
+                    Label(popups, text="Are you stuck in between the solution of the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=disgust, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=disgust, value=0,bg='lightgrey').pack(anchor="w")
+                elif text == "Sad" and (not flag_sad):
+                    flag_sad=True
+                    Label(popups, text="Are you not able to understand the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=sad, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=sad, value=0,bg='lightgrey').pack(anchor="w")
+                elif text == "Angry" and (not flag_angry):
+                    flag_angry=True
+                    Label(popups, text="Is the question out of syllabus?",font=fontStyle, bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="Yes", variable=angry, value=1,bg='lightgrey').pack(anchor="w")
+                    Radiobutton(popups, text="No", variable=angry, value=0,bg='lightgrey').pack(anchor="w")
+            frame = cv2.cvtColor(image1, cv2.COLOR_BGR2RGB)
+            frame = Image.fromarray(frame)
+            frame = ImageTk.PhotoImage(frame)
+            camVideoLabel.configure(image=frame)
+            camVideoLabel.image = frame
+        else:
+            image1 = cv2.rectangle(frame, (global_face_rect[0], global_face_rect[1]), (global_face_rect[2], global_face_rect[3]), (0, 255, 0), 4)
             font = cv2.FONT_HERSHEY_DUPLEX
-
-            imsize = (48, 48)
-            if imsize[0] > face.size[0]:
-                im = face.resize(imsize, Image.BICUBIC)
-            else:
-                im = face.resize(imsize, Image.ANTIALIAS)
-
-            # text = "Disgust"
-            text = predict_face_expression(net, im)
-            cv2.putText(image1, text, (face_rect[0] + 6, face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
-        if text=="Happy" and t<=5:
-            count_smile+=1
-
-        count_exp=count_exp+1
-
-        if mode==2:
-            if flag_popup:
-                flag_popup = False
-                popups.grid_propagate(True)
-                popups.grid(row=2, column=6, columnspan=4)
-            if text == "Happy" and (not flag_happy) :
-                flag_happy=True
-                Label(popups, text="Is the question too easy?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=happy, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=happy, value=0,bg='lightgrey').pack(anchor="w")
-            elif text == "Fear" and (not flag_fear):
-                flag_fear=True
-                Label(popups, text="Is the question too hard?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=fear, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=fear, value=0,bg='lightgrey').pack(anchor="w")
-            elif text == "Surprise" and (not flag_surprise):
-                flag_surprise=True
-                Label(popups, text="Have you seen the question somewhere?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=surprise, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=surprise, value=0,bg='lightgrey').pack(anchor="w")
-            elif text == "Disgust" and (not flag_disgust):
-                flag_disgust=True
-                Label(popups, text="Are you stuck in between the solution of the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=disgust, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=disgust, value=0,bg='lightgrey').pack(anchor="w")
-            elif text == "Sad" and (not flag_sad):
-                flag_sad=True
-                Label(popups, text="Are you not able to understand the question?",font=fontStyle,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=sad, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=sad, value=0,bg='lightgrey').pack(anchor="w")
-            elif text == "Angry" and (not flag_angry):
-                flag_angry=True
-                Label(popups, text="Is the question out of syllabus?",font=fontStyle, bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="Yes", variable=angry, value=1,bg='lightgrey').pack(anchor="w")
-                Radiobutton(popups, text="No", variable=angry, value=0,bg='lightgrey').pack(anchor="w")
-        frame = cv2.cvtColor(image1, cv2.COLOR_BGR2RGB)
-        frame = Image.fromarray(frame)
-        frame = ImageTk.PhotoImage(frame)
-        camVideoLabel.configure(image=frame)
-        camVideoLabel.image = frame
+            cv2.putText(image1, global_text, (global_face_rect[0] + 6, global_face_rect[3] + 16), font, 0.75, (0, 0, 255), 2)
+            frame = cv2.cvtColor(image1, cv2.COLOR_BGR2RGB)
+            frame = Image.fromarray(frame)
+            frame = ImageTk.PhotoImage(frame)
+            camVideoLabel.configure(image=frame)
+            camVideoLabel.image = frame
 
     root.quit()
 
@@ -571,7 +592,7 @@ def change_screen():
     while True:
         if(t==0):
 
-            if (count_smile/count_exp)>=0:
+            if (count_smile/count_exp)>0.5:
                 studentMode()
                 break
             else:
